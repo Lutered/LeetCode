@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Circles generator</title>
+    <link rel="icon" href="./favicon.ico" type="image/x-icon">
+    <script src="https://unpkg.com/geometric@2.2.10/build/geometric.min.js"></script>
+  </head>
+  <style>
+    body{
+        width: 100%;
+        height: 100vh;
+        margin: 0;
+        background-color: hsl(220, 11%, 11%);
+        color: white;
+    }
+    #root{
+        flex:1;
+        width: 1100px;
+        height: 100%;
+        margin: auto;
+        display: flex;
+        flex-direction: column;
+    }
+    #main-container{
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        height: 600px;
+        margin-top: 20px;
+        flex-shrink: 0;;
+    }
+    #canvas-container{
+        display: flex;
+        flex-direction: column;
+    }
+    #geometryCanvas{
+        border: 1px solid gray;
+        background-color: white;
+        cursor: crosshair;
+    }
+    #sidebar-container{
+        margin-left: 20px;
+        width: 350px;
+        display: flex;
+        flex-direction: column;
+    }
+    .button{
+        margin-bottom: 10px;
+        width: 100%; 
+        border-radius: 5px;
+        height: 30px;
+        color: white;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+    #resetButton{
+        background-color: gray;
+    }
+    #aboutButton{
+        background-color: orange;
+    }
+
+    #info-container{
+        display: flex;
+        flex-direction: column;
+        margin-top: 30px;
+    }
+    #info-title{
+        font-size: 20px;
+    }
+    #info-data{
+        display: flex;
+        flex-direction: row;
+        padding-top: 10px;
+    }
+    .info-data-column{
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+    .info-section{
+        height: 80px;
+        margin-right: 5px;
+    }
+    .info-section-label{
+        font-weight: bold;
+        font-size: 18px;
+    }
+    .info-section-value{
+       margin-left: 10px
+    }
+
+    #modal-container{
+        position: absolute;
+        top:0;
+        left:0;
+        background: rgb(3 3 3 / 70%);;
+        z-index: 10;
+        width: 100vw;
+        height: 100vh;
+    }
+    .modal-hidden{
+        display: none;
+    }
+    .modal-showed{
+        display: block;
+    }
+    #modal-wrapper{
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100%;
+        width: 100%;
+    }
+    #about-modal{
+        height: 360px;
+        width: 600px;
+        background-color: white;
+        border-radius: 8px;
+    }
+    #about-modal-container{
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        height: 100%;
+        padding: 10px 15px;
+        box-sizing: border-box;
+    }
+    #about-content{
+        flex: 1;
+        color: black;
+        display: flex;
+        flex-direction: column;
+    }
+    #about-title{
+        height: 30px;
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        align-items: center;
+        padding-top: 10px;
+        font-weight: bold;
+        font-size: 24px;
+    }
+    #about-instruction{
+        flex: 1;
+        padding: 5px 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    .about-li{
+        margin: 4px 0;
+    }
+  </style>
+  <script>
+    const pointRadius = 7;
+    const pointNamesArray = [
+        { name:'A', color: '#f0de41' }, 
+        { name:'B', color: '#dba33b' }, 
+        { name:'C', color: '#5676e8'},
+        { name:'D', color: '#7527db'}
+    ];
+
+    let currentPointIndex = 0;
+    let activePoint = {
+        index: -1,
+        point: null 
+    };
+    let pointsArray = [];
+
+    let isDrag = false;
+
+    function getMousePos(canvas, event) {
+        var rect = canvas.getBoundingClientRect();
+        return {
+            x: event.clientX - rect.left,
+            y: event.clientY - rect.top
+        };
+    }
+    function drawPoint(ctx, x, y, name, color){
+        ctx.beginPath();
+        ctx.arc(x, y, pointRadius, 0, 2 * Math.PI);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.stroke();
+    }
+    function drawCircles(ctx, circles){
+        for(let i = 0; i < circles.length; i++){
+            const circle = circles[i];
+            ctx.beginPath();
+            ctx.fillStyle = circle.color;
+            ctx.arc(circle.x, circle.y, circle.r, 0, 2 * Math.PI);
+            ctx.stroke();
+        }
+    }
+    function findCircleIntersections(x1, y1, r1, x2, y2, r2) {
+        let d = Math.hypot(x2 - x1, y2 - y1);
+
+        if (d > r1 + r2 ||  d < Math.abs(r1 - r2) ||  d === 0 && r1 === r2) {
+            return [];
+        }
+
+        let a = (r1 ** 2 - r2 ** 2 + d ** 2) / (2 * d);
+        let px = x1 + a * (x2 - x1) / d;
+        let py = y1 + a * (y2 - y1) / d;
+
+        let h = Math.sqrt(r1 ** 2 - a ** 2);
+
+        if (h === 0) {
+            return [{ x: px, y: py }];
+        }
+
+        let offsetX = h * (y2 - y1) / d;
+        let offsetY = h * (x2 - x1) / d;
+
+        return [
+            { x: px + offsetX, y: py - offsetY },
+            { x: px - offsetX, y: py + offsetY }
+        ];
+    }
+    function redrawCanvas(points, activeIndex, circleInfo){
+        const canvas = document.getElementById('geometryCanvas');
+        const ctx = canvas.getContext("2d");
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if(circleInfo){ 
+            drawCircles(ctx, circleInfo.circles);
+            for(let point of circleInfo.intersecPoints){
+                drawPoint(ctx, point.x, point.y, point.name, point.color);
+            }
+        }
+
+        for(let i = 0; i < points.length; i++){
+            let point = points[i];
+            drawPoint(ctx, point.x, point.y, point.name, activeIndex === i ? 'red' : point.color);
+        }
+    }
+    function recalculatePoints(points, circleInfo){
+        const fixedNum = 5;
+        const canvas = document.getElementById('geometryCanvas');
+        const infoDiv = document.getElementById("info-data");
+
+        infoDiv.innerHTML = "";
+        let pointsDiv = document.createElement('div');
+        pointsDiv.className = 'info-data-column';
+
+        for(let point of points){
+            let pointDiv = document.createElement('div');
+            pointDiv.className = 'info-section';
+
+            let pointNameDiv = document.createElement('div');
+            let pointCoordDiv = document.createElement('div');
+
+            pointNameDiv.className = 'info-section-label';
+            pointCoordDiv.className = 'info-section-value';
+
+            pointNameDiv.innerHTML += `<span style="color:${point.color}">${point.name}</span>`;
+            pointCoordDiv.innerHTML += `x: ${(point.x).toFixed(fixedNum)}<br/>y: ${(canvas.height - point.y).toFixed(fixedNum)}`;
+
+            pointDiv.appendChild(pointNameDiv);
+            pointDiv.appendChild(pointCoordDiv);
+            pointsDiv.appendChild(pointDiv);
+        }
+        infoDiv.appendChild(pointsDiv);
+
+        if(circleInfo){
+            const circleNames = ['A-B', 'C-D'];
+            let circleInfoDiv = document.createElement('div');
+            circleInfoDiv.className = 'info-data-column';
+
+            let iterationCount = 1;
+            for(let circle of circleInfo.circles){
+                let circleDiv = document.createElement('div');
+                circleDiv.className = 'info-section';
+
+                let circleNameDiv = document.createElement('div');
+                let circleValueDiv = document.createElement('div');
+
+                circleNameDiv.className = 'info-section-label';
+                circleValueDiv.className = 'info-section-value';
+
+                circleNameDiv.innerHTML += `Circle ${circleNames[iterationCount - 1]}:`;
+                circleValueDiv.innerHTML += `Radius: ${circle.r.toFixed(fixedNum)}<br/>`;
+
+                circleDiv.appendChild(circleNameDiv);
+                circleDiv.appendChild(circleValueDiv);
+                circleInfoDiv.appendChild(circleDiv);
+
+                iterationCount++;
+            }
+
+            iterationCount = 1;
+            for(let point of circleInfo.intersecPoints){
+                let intersecDiv = document.createElement('div');
+                intersecDiv.className = 'info-section';
+
+                let intersecNameDiv = document.createElement('div');
+                let intersecValueDiv = document.createElement('div');
+
+                intersecNameDiv.className = 'info-section-label';
+                intersecValueDiv.className = 'info-section-value';
+
+                intersecNameDiv.innerHTML += `Intersec point ${iterationCount}:`;
+                intersecNameDiv.style.color = point.color;
+
+                intersecValueDiv.innerHTML += `x: ${point.x?.toFixed(fixedNum)}<br/> y: ${point.y?.toFixed(fixedNum)}`;
+
+                intersecDiv.appendChild(intersecNameDiv);
+                intersecDiv.appendChild(intersecValueDiv);
+                circleInfoDiv.appendChild(intersecDiv);
+
+                iterationCount++;
+            }
+
+            infoDiv.appendChild(circleInfoDiv);
+        }
+    }
+    function calculateCircles(points){
+        const intersecPointsColor = ['#0b9e4d', '#21d9b7'];
+        const circles = [{  
+                x: points[0].x, 
+                y: points[0].y, 
+                r: Math.sqrt(Math.pow(points[1].x - points[0].x, 2) + Math.pow(points[1].y - points[0].y, 2))
+            },{
+                x: points[2].x, 
+                y: points[2].y, 
+                r: Math.sqrt(Math.pow(points[3].x - points[2].x, 2) + Math.pow(points[3].y - points[2].y, 2))
+            }
+        ];
+
+        const intersecPoints = findCircleIntersections(
+            circles[0].x, circles[0].y, circles[0].r, 
+            circles[1].x, circles[1].y, circles[1].r);
+
+        for(let i = 0; i < intersecPoints.length; i++){
+            intersecPoints[i].color = intersecPointsColor[i];
+        }
+
+        return {circles, intersecPoints}
+    }
+    function updateData(points, activeIndex, isAllPoints){
+        let circleInfo = null;
+        if(isAllPoints) circleInfo = calculateCircles(points);
+
+        redrawCanvas(points, activeIndex, circleInfo);
+        recalculatePoints(points, circleInfo);
+    }
+    function activatePoint(point, isActive){
+        const canvas = document.getElementById('geometryCanvas');
+        const context = canvas.getContext('2d');
+
+        drawPoint(context, point.x, point.y, point.name, isActive ? 'red' : point.color);
+    }
+    function dragPoint(event, points, dragPointIndex, isAllPoints){
+        const canvas = event.currentTarget;
+
+        var pos = getMousePos(canvas, event);
+
+        const dragPoint = points[dragPointIndex];
+        if(!dragPoint) return;
+
+        for(let i = 0; i < points.length; i++)
+        {
+            if(i === dragPointIndex) continue;
+            let point = points[i];
+
+            if(((point.x + 2 * pointRadius) > pos.x && (point.x - 2 * pointRadius) < pos.x) && 
+                ((point.y + 2 * pointRadius) > pos.y && (point.y - 2 * pointRadius) < pos.y))
+            {
+                console.log(i);
+                return;
+            }    
+        }
+
+        points[dragPointIndex].x = pos.x;
+        points[dragPointIndex].y = pos.y;
+        points[dragPointIndex].clientX = event.clientX;
+        points[dragPointIndex].clientY = event.clientY;
+
+        updateData(points, dragPointIndex, isAllPoints);
+    }
+    function setDrag(value){
+        const canvas = document.getElementById('geometryCanvas');
+
+        isDrag = value;
+        canvas.style.cursor = value ? 'grabbing' : 'grab';
+    }
+    function createNewPoint(event){
+       if(pointsArray.length >= pointNamesArray.length) return;
+
+       const canvas = event.currentTarget;
+
+       let pos = getMousePos(canvas, event);
+
+       const pointNameObj = pointNamesArray[currentPointIndex];
+       const point = {
+            name: pointNameObj.name,
+            color: pointNameObj.color,
+            x: pos.x,
+            y: pos.y,
+            clientX: event.clientX,
+            clientY: event.clientY
+       };
+       activePoint.index = currentPointIndex;
+       activePoint.point = point
+       pointsArray.push(point);
+       
+       updateData(pointsArray, activePoint.index, pointsArray.length === pointNamesArray.length);
+       canvas.style.cursor = 'grab';
+
+       currentPointIndex++;
+    }
+
+    function scanActivePoint(event){
+        if(currentPointIndex === 0) return;
+
+        const canvas = event.currentTarget;
+
+        let pos = getMousePos(canvas, event);
+
+        let pointMatch = -1;
+        let iterator = 0;
+        for(let point of pointsArray){
+            if(((pos.x - point.x) ** 2 + 
+                (pos.y - point.y) ** 2) < pointRadius ** 2){
+                pointMatch = iterator;
+                break;
+            }
+
+            iterator++;
+        }
+
+        if(pointMatch < 0){
+            if(activePoint.index > -1){
+                activatePoint(activePoint.point, false);
+                activePoint = {
+                    index: -1,
+                    point: null
+                };
+                canvas.style.cursor = 'crosshair';
+            }
+            return;
+        }
+
+        if(pointMatch === activePoint.index) return;
+        if(activePoint.index > -1 && pointMatch != activePoint.index){
+            activatePoint(activePoint, false);
+        }
+
+        activatePoint(pointsArray[pointMatch], true);
+        activePoint.index = pointMatch;
+        activePoint.point = pointsArray[pointMatch];
+        canvas.style.cursor = 'grab';
+    }
+   
+    function onCanvasClick(event) {
+        const canvas = document.getElementById('geometryCanvas');
+        if(isDrag){
+            setDrag(false);
+        }
+        else if(activePoint.index > -1) return;
+        else createNewPoint(event);
+    }
+   
+    function resetCanvas(){
+        const canvas = document.getElementById('geometryCanvas');
+        const context = canvas.getContext('2d');
+
+        currentPointIndex = 0;
+        pointsArray = [];
+        activePoint = {
+            index: -1,
+            point: null
+        };
+        isDrag = false;
+
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        recalculatePoints();
+    }
+
+    function canvasOnMouseMove(event){
+        if(isDrag) dragPoint(event, pointsArray, activePoint.index, pointsArray.length === pointNamesArray.length);
+        else scanActivePoint(event);
+    }
+
+    function canvasOnMouseDown(event){
+        const canvas = document.getElementById('geometryCanvas');
+        if(activePoint.index > -1){ 
+            setDrag(true);
+        }
+    }
+
+    function onClickAbout(){
+        const modalContainer = document.getElementById('modal-container');
+        modalContainer.className = 'modal-showed';
+    }
+    function onClickCloseAbout(event){
+        const modalContainer = document.getElementById('modal-container');
+        modalContainer.className = 'modal-hidden';
+
+        event.stopPropagation();
+    }
+    function stopProp(event){
+        event.stopPropagation();
+    }
+
+  </script>
+  <body>
+    <div id="modal-container" class="modal-hidden">
+        <div id="modal-wrapper" onclick="onClickCloseAbout(event)">
+            <div id="about-modal" onclick="stopProp(event)">
+                <div id="about-modal-container">
+                    <div id="about-content">
+                        <div id="about-title">Circle generator</div>
+                        <div id="about-instruction">
+                            <div>
+                                <b>How to use</b>:
+                                <ol>
+                                    <li class="about-li">Create 4 points(click on canvas to create a point)</li>
+                                    <li class="about-li">After you create all points, 2 circles should be created automatically and intersection point will be calculated</li>
+                                    <li class="about-li">You can drag and drop points to change circles parameters</li>
+                                </ol>
+                            </div>
+                            <div>
+                                <b>Tips</b>:
+                                <ul>
+                                    <li class="about-li">2 points cannot be placed in the same place</li>
+                                    <li class="about-li">Each point has a specific color, so you can find them on the canvas</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <div><b>Created by</b> - oy3work@gmail.com</div>
+                                <div><b>Created date</b>  - 16.03.2025</div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- <div id="about-footer">
+                        <button id="about-close-button" onclick="onClickCloseAbout(event)">Close</button>
+                    </div> -->
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="root">
+        <h1>Circle generator</h1>
+        <div id="main-container">
+            <div id="canvas-container">
+                <canvas 
+                    id="geometryCanvas" 
+                    height="600" 
+                    width="750" 
+                    onclick="onCanvasClick(event)"
+                    onmousemove="canvasOnMouseMove(event)"
+                    onmousedown="canvasOnMouseDown(event)"
+                    ></canvas>
+            </div>
+            <div id="sidebar-container">
+                <button id="resetButton" class="button" onclick="resetCanvas()">Reset</button>
+                <button id="aboutButton" class="button" onclick="onClickAbout()">About</button>
+
+                <div id="info-container">
+                    <span id="info-title">Info:</span>
+                    <div id="info-data"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+  </body>
+</html>

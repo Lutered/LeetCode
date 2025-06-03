@@ -1355,6 +1355,32 @@ namespace LeetCode
             return anagramsDict.Values.ToList();
         }
 
+        public int Candy(int[] ratings)
+        {
+            var candiesArr = new int[ratings.Length];
+
+            for (int i = 1; i < ratings.Length; i++)
+            {
+                if (ratings[i] > ratings[i - 1])
+                    candiesArr[i] = candiesArr[i - 1] + 1;
+            }
+
+            for (int i = ratings.Length - 2; i >= 0; i--)
+            {
+                if (ratings[i] > ratings[i + 1])
+                    candiesArr[i] = Math.Max(candiesArr[i], candiesArr[i + 1] + 1);
+            }
+
+            int result = 0;
+
+            foreach (var candy in candiesArr)
+            {
+                result += candy + 1;
+            }
+
+            return result;
+        }
+
         #region Roman
 
         private Dictionary<char, int> romanValuesDict = new Dictionary<char, int>

@@ -91,3 +91,5 @@ var leetCodeTasks = new LeetCodeTasks();
 //Console.WriteLine(leetCodeTasks.StrStr("a", "a"));
 
 //leetCodeTasks.SpiralOrder([[1, 2, 3], [4, 5, 6], [7, 8, 9]]);
+
+leetCodeTasks.SmallestEquivalentString("parker", "morris", "parser");

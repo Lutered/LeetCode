@@ -1381,6 +1381,49 @@ namespace LeetCode
             return result;
         }
 
+        public string SmallestEquivalentString(string s1, string s2, string baseStr)
+        {
+            int[] charsIndexes = new int[26];
+
+            for(int i = 0; i < 26; i++)
+            {
+                charsIndexes[i] = i;
+            }
+
+            Func<char, char> findLowestChar = (char x) => 
+            {
+                while(x - 'a' != charsIndexes[x - 'a'])
+                {
+                    charsIndexes[x - 'a'] = charsIndexes[charsIndexes[x - 'a']];
+                    x = (char)(charsIndexes[x - 'a'] + 'a');
+                }
+
+                return x;
+            };
+
+            Action<char, char> unionChars = (char a, char b) =>
+            {
+                char minCharA = findLowestChar(a);
+                char minCharB = findLowestChar(b);
+
+                if (minCharA < minCharB) charsIndexes[minCharB - 'a'] = charsIndexes[minCharA - 'a'];
+                else charsIndexes[minCharA - 'a'] = charsIndexes[minCharB - 'a'];
+            };
+
+            for(int i = 0; i < s1.Length; i++)
+            {
+                unionChars(s1[i], s2[i]);
+            }
+
+            string resultString = string.Empty;
+            foreach(char c in baseStr)
+            {
+                resultString += findLowestChar(c);
+            }
+
+            return resultString;
+        }
+
         #region Roman
 
         private Dictionary<char, int> romanValuesDict = new Dictionary<char, int>

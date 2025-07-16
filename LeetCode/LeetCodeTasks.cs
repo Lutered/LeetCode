@@ -1452,6 +1452,56 @@ namespace LeetCode
             return true;
         }
 
+        public int GetDecimalValue(ListNode head)
+        {
+            var binaryStrBuilder = new StringBuilder();
+
+            var current = head;
+            while (current != null)
+            {
+                binaryStrBuilder.Append(current.val);
+                current = current.next;
+            }
+
+            var binaryStr = binaryStrBuilder.ToString();
+
+            if (string.IsNullOrEmpty(binaryStr)) return 0;
+
+            return Convert.ToInt32(binaryStr, 2);
+        }
+
+        public int MaximumLength(int[] nums)
+        {
+            int onlyOdds = 0;
+            int onlyEvens = 0;
+            int others = 0;
+
+            bool? isLastEven = null;
+            for (int i = 0; i < nums.Length; i++)
+            {
+                if (nums[i] % 2 == 0)
+                {
+                    if (isLastEven == false || isLastEven == null)
+                    {
+                        isLastEven = true;
+                        others++;
+                    }
+                    onlyEvens++;
+                }
+                else
+                {
+                    if (isLastEven == true || isLastEven == null)
+                    {
+                        isLastEven = false;
+                        others++;
+                    }
+                    onlyOdds++;
+                }
+            }
+
+            return Math.Max(Math.Max(onlyOdds, onlyEvens), others);
+        }
+
         #region Roman
 
         private Dictionary<char, int> romanValuesDict = new Dictionary<char, int>
